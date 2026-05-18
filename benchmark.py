@@ -42,7 +42,7 @@ def run_benchmark(threads: int, precision: int, interval: int | None) -> float:
 
     # Извличане на времето за изчисление от stdout
     match: Match | None = search(
-        r"Calculation time:\s+([0-9.]+)\s+s", result.stdout
+        r"Calculation time:\s+([0-9.]+)", result.stdout
     )
     if not match:
         print("Could not parse calculation time from output.")

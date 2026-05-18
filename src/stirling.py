@@ -7,6 +7,8 @@ def estimate_terms(precision: int) -> int:
     """Оценка на броя членове на реда на Тейлър, необходими за дадена десетична точност."""
     if precision < 1:
         raise ValueError("Precision must be at least 1.")
+    if precision == 1:
+        return 4  # e = 2.718... so 4 terms gives a good approximation for 1 digit
     n: int = round(precision / log(precision, 10))
     return max(n, 1)
 

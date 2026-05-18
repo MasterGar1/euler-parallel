@@ -2,7 +2,6 @@ from sys import stderr, exit as sys_exit
 from time import perf_counter_ns
 from argparse import ArgumentParser, Namespace
 from decimal import Decimal, getcontext
-from queue import Queue
 from typing import List, Tuple
 
 from src.stirling import distribute_work, estimate_terms, validate_threads
@@ -74,30 +73,28 @@ def main() -> None:
 
     # Разделяне на членовете в интервали за нишките
     intervals: List[Tuple[int, int]] = distribute_work(terms, threads_count, interval)
-    actual_threads: int = len(intervals)
+    actual_threads: int = min(threads_count, len(intervals))
 
     if not quiet:
         print(f"[INFO] Calculating e to {precision} decimal places.")
         print(f"[INFO] Taylor series terms: {terms}")
-        print(f"[INFO] Using {actual_threads} thread(s) in a linear pipeline.")
+        print(f"[INFO] Using {actual_threads} thread(s).")
         print(f"[INFO] Granularity: {terms // actual_threads}")
         print(
             f"[INFO] Work intervals: {', '.join(str(interval) for interval in intervals[:5]) + f',{' ...,' if len(intervals) > 6 else ''} {intervals[-1]}' if len(intervals) > 5 else ''}"
         )
 
-    # Създаване по една опашка за връзка на нишка
-    queues: List[Queue] = [Queue() for _ in range(actual_threads + 1)]
+    # Разпределяне на интервалите към нишките (round-robin)
+    worker_tasks: List[List[Tuple[int, int, int]]] = [[] for _ in range(actual_threads)]
+    for idx, (start_k, end_k) in enumerate(intervals):
+        worker_tasks[idx % actual_threads].append((idx, start_k, end_k))
 
     # Създаване и конфигуриране на работници
     workers: List[Worker] = []
     for idx in range(actual_threads):
-        start_k, end_k = intervals[idx]
         w: Worker = Worker(
             worker_id=idx,
-            in_queue=queues[idx],
-            out_queue=queues[idx + 1] if idx < actual_threads - 1 else None,
-            start_k=start_k,
-            end_k=end_k,
+            tasks=worker_tasks[idx],
         )
         workers.append(w)
 
@@ -107,25 +104,31 @@ def main() -> None:
     # Изпълнение на изчислението
     calc_start: int = perf_counter_ns()
 
-    # Стартиране на всички нишки. Те ще блокират на своята in_queue докато предишната нишка приключи.
+    # Стартиране на всички нишки.
     for w in workers:
         w.start()
-
-    # Подаване на начални стойности в първата опашка за стартиране на pipeline-а
-    # Сумата започва от 1.0 (членът k=0, 1/0!), а базата на факториела е 1 (0!)
-    initial_sum: Decimal = Decimal(1.0)
-    initial_fact: int = 1
-    queues[0].put((initial_sum, initial_fact))
 
     # Изчакване на всички работници да завършат
     for w in workers:
         w.join()
+    # Събиране на резултатите от всички нишки и подреждането им
+    all_results: List[Tuple[Decimal, int]] = [None] * len(intervals) # type: ignore
+    for w in workers:
+        for task_idx, local_sum, local_mult in w.results:
+            all_results[task_idx] = (local_sum, local_mult)
+    # Събиране на крайния резултат
+    # Сумата започва от 1.0 (членът k=0, 1/0!), а базата на факториела е 1 (0!)
+    current_sum: Decimal = Decimal(1.0)
+    # Списък за съхранение на базовите факториели
+    base_facts: List[int] = [1]
+    for i in range(len(all_results) - 1):
+        _, local_mult = all_results[i]
+        base_facts.append(base_facts[-1] * local_mult)
 
-    # Събиране на крайния резултат от последния работник
-    final_result = workers[-1].result
-    if final_result is None:
-        final_result = queues[-1].get()
-
+    for (local_sum, _), base_fact in zip(all_results, base_facts):
+        current_sum += local_sum / Decimal(base_fact)
+    current_fact: int = base_facts[-1] * all_results[-1][1] if all_results else 1
+    final_result = (current_sum, current_fact)
     calc_end: int = perf_counter_ns()
     calc_time: int = calc_end - calc_start
 
