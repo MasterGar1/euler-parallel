@@ -2,9 +2,10 @@ from sys import stderr, exit as sys_exit
 from time import perf_counter_ns
 from argparse import ArgumentParser, Namespace
 from decimal import Decimal, getcontext
+from queue import Queue
 from typing import List, Tuple
 
-from src.stirling import distribute_work, estimate_terms, validate_threads
+from src.helper import distribute_work, estimate_terms, validate_threads
 from src.worker import Worker
 
 
@@ -30,8 +31,8 @@ def parse_args() -> Namespace:
         "-i",
         "--interval",
         type=int,
-        default=None,
-        help="Interval size for each partial sum. If omitted, uses work-proportional distribution.",
+        default=1,
+        help="Number of intervals per thread. Higher = finer granularity. Defaults to 1.",
     )
     parser.add_argument(
         "-q",
@@ -59,7 +60,6 @@ def main() -> None:
     quiet: bool = args.quiet
     output_file: str = args.file
 
-    # Точност и оценка на членовете
     setup_start: int = perf_counter_ns()
     getcontext().prec = precision + 10
     terms: int = estimate_terms(precision)
@@ -71,80 +71,64 @@ def main() -> None:
             print(f"[ERROR] {e}", file=stderr)
         sys_exit(1)
 
-    # Разделяне на членовете в интервали за нишките
     intervals: List[Tuple[int, int]] = distribute_work(terms, threads_count, interval)
-    actual_threads: int = min(threads_count, len(intervals))
 
+    num_chunks: int = len(intervals)
     if not quiet:
         print(f"[INFO] Calculating e to {precision} decimal places.")
         print(f"[INFO] Taylor series terms: {terms}")
-        print(f"[INFO] Using {actual_threads} thread(s).")
-        print(f"[INFO] Granularity: {terms // actual_threads}")
-        print(
-            f"[INFO] Work intervals: {', '.join(str(interval) for interval in intervals[:5]) + f',{' ...,' if len(intervals) > 6 else ''} {intervals[-1]}' if len(intervals) > 5 else ''}"
-        )
+        print(f"[INFO] Using {threads_count} worker(s) in a linear pipeline.")
+        avg_granularity: float = terms / num_chunks
+        print(f"[INFO] Intervals per thread: {interval} ({num_chunks} stages total, ~{avg_granularity:.1f} terms/stage)")
+        intervals_str = ", ".join(str(iv) for iv in intervals[:5])
+        if len(intervals) > 5:
+            intervals_str += f", ... {intervals[-1]}"
+        print(f"[INFO] Work intervals: {intervals_str}")
 
-    # Разпределяне на интервалите към нишките (round-robin)
-    worker_tasks: List[List[Tuple[int, int, int]]] = [[] for _ in range(actual_threads)]
-    for idx, (start_k, end_k) in enumerate(intervals):
-        worker_tasks[idx % actual_threads].append((idx, start_k, end_k))
+    queues: List[Queue] = [Queue() for _ in range(num_chunks + 1)]
 
-    # Създаване и конфигуриране на работници
     workers: List[Worker] = []
-    for idx in range(actual_threads):
+    for idx in range(threads_count):
         w: Worker = Worker(
             worker_id=idx,
-            tasks=worker_tasks[idx],
+            threads_count=threads_count,
+            intervals=intervals,
+            queues=queues,
+            precision=precision,
         )
         workers.append(w)
 
     setup_end: int = perf_counter_ns()
     setup_time: int = setup_end - setup_start
 
-    # Изпълнение на изчислението
     calc_start: int = perf_counter_ns()
 
-    # Стартиране на всички нишки.
     for w in workers:
         w.start()
 
-    # Изчакване на всички работници да завършат
+    initial_sum: Decimal = Decimal(1.0)
+    initial_term: Decimal = Decimal(1.0)
+    queues[0].put((initial_sum, initial_term))
+
     for w in workers:
         w.join()
-    # Събиране на резултатите от всички нишки и подреждането им
-    all_results: List[Tuple[Decimal, int]] = [None] * len(intervals) # type: ignore
-    for w in workers:
-        for task_idx, local_sum, local_mult in w.results:
-            all_results[task_idx] = (local_sum, local_mult)
-    # Събиране на крайния резултат
-    # Сумата започва от 1.0 (членът k=0, 1/0!), а базата на факториела е 1 (0!)
-    current_sum: Decimal = Decimal(1.0)
-    # Списък за съхранение на базовите факториели
-    base_facts: List[int] = [1]
-    for i in range(len(all_results) - 1):
-        _, local_mult = all_results[i]
-        base_facts.append(base_facts[-1] * local_mult)
 
-    for (local_sum, _), base_fact in zip(all_results, base_facts):
-        current_sum += local_sum / Decimal(base_fact)
-    current_fact: int = base_facts[-1] * all_results[-1][1] if all_results else 1
-    final_result = (current_sum, current_fact)
+    final_result = queues[-1].get()
+
     calc_end: int = perf_counter_ns()
     calc_time: int = calc_end - calc_start
 
     total_end: int = perf_counter_ns()
     total_time: int = total_end - total_start
 
-    # Записване на резултата във файл
     e_value, _ = final_result
     with open(output_file, "w") as f:
         f.write(str(e_value))
 
-    # Извеждане на информация за времето
     if not quiet:
-        print(f"Setup time:        {setup_time}")
-        print(f"Calculation time:  {calc_time}")
-        print(f"Total time:        {total_time}")
+        print(f"Setup time:        {setup_time / 1e9}")
+        print(f"Calculation time:  {calc_time / 1e9}")
+        print(f"Total time:        {total_time / 1e9}")
         print(f"Result written to: {output_file}")
 
 

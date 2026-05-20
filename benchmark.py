@@ -7,7 +7,7 @@ from csv import DictWriter
 from re import Match, search
 from subprocess import CompletedProcess, run as subprocess_run
 
-from src.stirling import estimate_terms
+from src.helper import estimate_terms
 
 
 def parse_args() -> Namespace:
@@ -18,15 +18,14 @@ def parse_args() -> Namespace:
         "-p", "--precision", type=int, required=True, help="Number of decimal digits."
     )
     parser.add_argument(
-        "-i", "--interval", type=int, default=None, help="Optional fixed interval size."
+        "-i", "--interval", type=int, default=1, help="Optional fixed interval size."
     )
     return parser.parse_args()
 
 
-def run_benchmark(threads: int, precision: int, interval: int | None) -> float:
-    cmd: list[str] = ["python", "main.py", "-t", str(threads), "-p", str(precision)]
-    if interval is not None:
-        cmd.extend(["-i", str(interval)])
+def run_benchmark(threads: int, precision: int, interval: int) -> float:
+    from sys import executable
+    cmd: list[str] = [executable, "main.py", "-t", str(threads), "-p", str(precision), "-i", str(interval)]
 
     dummy_file: str = "dummy_e.txt"
     cmd.append(dummy_file)
