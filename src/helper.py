@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 
 def estimate_terms(precision: int) -> int:
+    """Оценява броя членове на ред на Тейлър, необходими за постигане на дадена точност."""
     if precision < 1:
         raise ValueError("Precision must be at least 1.")
     if precision == 1:
@@ -13,6 +14,7 @@ def estimate_terms(precision: int) -> int:
 
 
 def validate_threads(threads: int, terms: int) -> int:
+    """Проверява дали броят нишки е валиден и в рамките на позволения максимум."""
     max_threads: int = cpu_count() or 1
     if threads < 1:
         raise ValueError("Thread count must be at least 1.")

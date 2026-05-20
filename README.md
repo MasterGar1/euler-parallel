@@ -67,6 +67,14 @@ Queue[0] → Worker[0] → Queue[1] → Worker[1] → ... → Queue[N] → Worke
 
 Before the free-threaded (no-GIL) build of Python 3.13+, the Global Interpreter Lock would serialise CPU-bound Python threads, making this approach pointless. With the GIL disabled (`PYTHON_GIL=0`), `threading.Thread` workers can run true parallel computation on multiple cores, making this pipeline effective.
 
+---
+
+## Български коментари
+
+Във всички `.py` файлове са добавени докстрингове и коментари на български, описващи ролята на всяка функция, клас и основна стъпка в алгоритъма.
+
+---
+
 ## Usage
 
 ### Prerequisites
@@ -85,7 +93,7 @@ Calculates `e` to 10,000 decimal places and writes the result to `out.txt`.
 ### Options
 
 | Argument | Description |
-|---|---|
+|---|---|---|
 | `-p, --precision` | Decimal digits of accuracy (required) |
 | `-t, --threads` | Number of worker threads (default: 1) |
 | `-i, --interval` | Fixed interval size per thread; omitting uses automatic cost-proportional distribution |
@@ -150,9 +158,9 @@ python benchmark.py -p 10000
 ├── main.py              # Entry point: argument parsing, pipeline setup, timing
 ├── benchmark.py         # Automated benchmark: runs, CSV tables, PNG plots
 ├── src/
-│   ├── stirling.py      # Term estimation, thread validation, work distribution
+│   ├── helper.py        # Term estimation, thread validation, work distribution
 │   └── worker.py        # Worker thread implementing factored local computation
-├── results/             # Output CSV tables and speedup/efficiency graphs
+├── results/             # Output CSV tables and speedup/efficiency graphs (ignored by git)
 ├── out.txt              # Default result file
 ├── requirements.txt     # Python dependencies (matplotlib for benchmarking)
 └── README.md

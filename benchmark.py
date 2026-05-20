@@ -8,6 +8,7 @@ from src.helper import estimate_terms
 
 
 def parse_args() -> Namespace:
+    """Анализира аргументите от командния ред за бenchmark-а."""
     parser: ArgumentParser = ArgumentParser(
         description="Benchmark parallel calculation of e."
     )
@@ -21,11 +22,13 @@ def parse_args() -> Namespace:
 
 
 def run_benchmark(threads: int, precision: int, interval: int) -> float:
+    """Изпълнява паралелното изчисление на e с дадения брой нишки и измерва времето."""
     result = calculate_e(threads, precision, interval, quiet=True)
     return float(result["calc_time"])
 
 
 def main():
+    """Основна функция за изпълнение на benchmark-а, включително запис в CSV и генериране на графики."""
     args: Namespace = parse_args()
     max_threads: int = cpu_count() or 1
 

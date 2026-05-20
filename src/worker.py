@@ -11,9 +11,9 @@ sys.set_int_max_str_digits(1000000)
 
 class Worker(Thread):
     """
-    Pipeline-worker, which calculates a partial sum for a slice of the Taylor series.
-    It processes assigned intervals, fetches the previous result from the corresponding queue,
-    adds its local sum, and sends the new result to the next queue.
+    Работник (поток), който изчислява частична сума за слайс от ред на Тейлър.
+    Обработва назначените интервали, получава предишния резултат от съответната опашка,
+    добавя локалната си сума и изпраща новия резултат в следващата опашка.
     """
 
     def __init__(
@@ -24,6 +24,7 @@ class Worker(Thread):
         queues: List[Queue],
         precision: int,
     ):
+        """Инициализира работника с ID, брой нишки, интервали, опашки и точност."""
         super().__init__(daemon=True)
         self.worker_id = worker_id
         self.threads_count = threads_count
@@ -33,6 +34,7 @@ class Worker(Thread):
         self.result: Optional[Tuple[Decimal, None]] = None
 
     def run(self) -> None:
+        """Изпълнява изчислението за назначените интервали и предава резултатите през опашките."""
         getcontext().prec = self.precision + 10
 
         for i in range(self.worker_id, len(self.intervals), self.threads_count):
