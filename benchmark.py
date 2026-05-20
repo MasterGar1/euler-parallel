@@ -1,12 +1,9 @@
 import matplotlib.pyplot as plt
-
-from sys import exit as sys_exit
-from os import cpu_count, path, remove
+from os import cpu_count
 from argparse import ArgumentParser, Namespace
 from csv import DictWriter
-from re import Match, search
-from subprocess import CompletedProcess, run as subprocess_run
 
+from main import calculate_e
 from src.helper import estimate_terms
 
 
@@ -24,34 +21,8 @@ def parse_args() -> Namespace:
 
 
 def run_benchmark(threads: int, precision: int, interval: int) -> float:
-    from sys import executable
-    cmd: list[str] = [executable, "main.py", "-t", str(threads), "-p", str(precision), "-i", str(interval)]
-
-    dummy_file: str = "dummy_e.txt"
-    cmd.append(dummy_file)
-
-    result: CompletedProcess = subprocess_run(
-        cmd, capture_output=True, text=True
-    )
-
-    if result.returncode != 0:
-        print(f"Error running benchmark for {threads} threads:")
-        print(result.stderr)
-        sys_exit(1)
-
-    # Извличане на времето за изчисление от stdout
-    match: Match | None = search(
-        r"Calculation time:\s+([0-9.]+)", result.stdout
-    )
-    if not match:
-        print("Could not parse calculation time from output.")
-        print("Output was:\n", result.stdout)
-        sys_exit(1)
-
-    if path.exists(dummy_file):
-        remove(dummy_file)
-
-    return float(match.group(1))
+    result = calculate_e(threads, precision, interval, quiet=True)
+    return float(result["calc_time"])
 
 
 def main():
@@ -140,49 +111,89 @@ def main():
     print(f"\nSaved benchmark table to {csv_filename}")
 
     # Генериране на графики
-    threads_list = [r["threads"] for r in results]
-    speedups = [r["speedup"] for r in results]
-    efficiencies = [r["efficiency"] for r in results]
+    threads_list: list[int] = [r["threads"] for r in results]
+    speedups: list[float] = [r["speedup"] for r in results]
+    efficiencies: list[float] = [r["efficiency"] for r in results]
 
-    # Графика на ускорението
-    plt.figure(figsize=(10, 6))
+    # --- Графика на изчислителното време (Compute Time) ---
+    plt.figure(figsize=(12, 7))
+
+    best_times: list[float] = [r["best_time"] / 1e9 for r in results]
+    plt.plot(
+        threads_list,
+        best_times,
+        marker="",
+        linestyle="-",
+        color="red",
+        linewidth=2,
+        label="Tp",
+    )
+
+    for run_idx in range(3):
+        run_times: list[float] = [r["times"][run_idx] / 1e9 for r in results]
+        plt.plot(
+            threads_list,
+            run_times,
+            marker="",
+            linestyle="--",
+            label=f"Tp({run_idx + 1})",
+            linewidth=1,
+            alpha=0.6,
+        )
+
+    plt.title(f"Изчислително време при точност {args.precision}")
+    plt.xlabel("Брой нишки")
+    plt.ylabel("Време (s)")
+    plt.xticks(threads_list)
+    plt.grid(True, linestyle=":", alpha=0.6)
+    plt.legend()
+    compute_filename: str = f"results/compute_p-{args.precision}_i-{interval_str}.png"
+    plt.savefig(compute_filename)
+    plt.close()
+    print(f"Saved compute time graph to {compute_filename}")
+
+    # --- Графика на ускорението (Speedup) ---
+    plt.figure(figsize=(12, 7))
     plt.plot(
         threads_list,
         speedups,
         marker="",
         linestyle="-",
-        color="b",
-        label="Ускорение",
+        color="r",
+        linewidth=2,
+        label="Sp",
     )
 
-    plt.title(f"Точност: {args.precision}")
-    plt.xlabel("Нишки")
+    plt.title(f"Ускорение при точност {args.precision}")
+    plt.xlabel("Брой нишки")
     plt.ylabel("Ускорение")
     plt.xticks(threads_list)
     plt.grid(True, linestyle=":", alpha=0.6)
     plt.legend()
-    speedup_filename = f"results/speedup_p-{args.precision}_i-{interval_str}.png"
+    speedup_filename: str = f"results/speedup_p-{args.precision}_i-{interval_str}.png"
     plt.savefig(speedup_filename)
     plt.close()
     print(f"Saved speedup graph to {speedup_filename}")
 
-    # Графика на ефективността
-    plt.figure(figsize=(10, 6))
+    # --- Графика на ефективността (Efficiency) ---
+    plt.figure(figsize=(12, 7))
     plt.plot(
         threads_list,
         efficiencies,
         marker="",
         linestyle="-",
-        color="g",
-        label="Ефективност",
+        color="r",
+        linewidth=2,
+        label="Ep",
     )
-    plt.title(f"Точност: {args.precision}")
-    plt.xlabel("Нишки")
+
+    plt.title(f"Ефективност при точност {args.precision}")
+    plt.xlabel("Брой нишки")
     plt.ylabel("Ефективност")
     plt.xticks(threads_list)
     plt.grid(True, linestyle=":", alpha=0.6)
     plt.legend()
-    efficiency_filename = f"results/efficiency_p-{args.precision}_i-{interval_str}.png"
+    efficiency_filename: str = f"results/efficiency_p-{args.precision}_i-{interval_str}.png"
     plt.savefig(efficiency_filename)
     plt.close()
     print(f"Saved efficiency graph to {efficiency_filename}")

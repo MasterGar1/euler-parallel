@@ -49,41 +49,19 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
-    total_start: int = perf_counter_ns()
-
-    args: Namespace = parse_args()
-
-    threads_count: int = args.threads
-    precision: int = args.precision
-    interval: int = args.interval
-    quiet: bool = args.quiet
-    output_file: str = args.file
-
-    setup_start: int = perf_counter_ns()
+def setup(threads_count: int, precision: int, interval: int):
     getcontext().prec = precision + 10
     terms: int = estimate_terms(precision)
 
     try:
         threads_count = validate_threads(threads_count, terms)
     except ValueError as e:
-        if not quiet:
-            print(f"[ERROR] {e}", file=stderr)
+        print(f"[ERROR] {e}", file=stderr)
         sys_exit(1)
 
     intervals: List[Tuple[int, int]] = distribute_work(terms, threads_count, interval)
 
     num_chunks: int = len(intervals)
-    if not quiet:
-        print(f"[INFO] Calculating e to {precision} decimal places.")
-        print(f"[INFO] Taylor series terms: {terms}")
-        print(f"[INFO] Using {threads_count} worker(s) in a linear pipeline.")
-        avg_granularity: float = terms / num_chunks
-        print(f"[INFO] Intervals per thread: {interval} ({num_chunks} stages total, ~{avg_granularity:.1f} terms/stage)")
-        intervals_str = ", ".join(str(iv) for iv in intervals[:5])
-        if len(intervals) > 5:
-            intervals_str += f", ... {intervals[-1]}"
-        print(f"[INFO] Work intervals: {intervals_str}")
 
     queues: List[Queue] = [Queue() for _ in range(num_chunks + 1)]
 
@@ -98,16 +76,16 @@ def main() -> None:
         )
         workers.append(w)
 
-    setup_end: int = perf_counter_ns()
-    setup_time: int = setup_end - setup_start
+    return workers, queues, intervals, terms, num_chunks, threads_count
 
-    calc_start: int = perf_counter_ns()
+
+def run(workers: List[Worker], queues: List[Queue]):
+    initial_sum: Decimal = Decimal(1.0)
+    initial_term: Decimal = Decimal(1.0)
 
     for w in workers:
         w.start()
 
-    initial_sum: Decimal = Decimal(1.0)
-    initial_term: Decimal = Decimal(1.0)
     queues[0].put((initial_sum, initial_term))
 
     for w in workers:
@@ -115,22 +93,73 @@ def main() -> None:
 
     final_result = queues[-1].get()
 
-    calc_end: int = perf_counter_ns()
-    calc_time: int = calc_end - calc_start
+    return final_result
 
-    total_end: int = perf_counter_ns()
-    total_time: int = total_end - total_start
 
-    e_value, _ = final_result
-    with open(output_file, "w") as f:
-        f.write(str(e_value))
+def calculate_e(
+    threads_count: int, precision: int, interval: int, quiet: bool = False
+) -> dict:
+    total_start: int = perf_counter_ns()
+
+    setup_start: int = perf_counter_ns()
+    workers, queues, intervals, terms, num_chunks, threads_count = setup(
+        threads_count, precision, interval
+    )
+    setup_end: int = perf_counter_ns()
 
     if not quiet:
-        print(f"Setup time:        {setup_time / 1e9}")
-        print(f"Calculation time:  {calc_time / 1e9}")
-        print(f"Total time:        {total_time / 1e9}")
+        print(f"[INFO] Calculating e to {precision} decimal places.")
+        print(f"[INFO] Taylor series terms: {terms}")
+        print(f"[INFO] Using {threads_count} worker(s) in a linear pipeline.")
+        avg_granularity: float = terms / num_chunks
+        print(
+            f"[INFO] Intervals per thread: {interval} ({num_chunks} stages total, ~{avg_granularity:.1f} terms/stage)"
+        )
+        intervals_str = ", ".join(str(iv) for iv in intervals[:5])
+        if len(intervals) > 5:
+            intervals_str += f", ... {intervals[-1]}"
+        print(f"[INFO] Work intervals: {intervals_str}")
+
+    calc_start: int = perf_counter_ns()
+    final_result = run(workers, queues)
+    calc_end: int = perf_counter_ns()
+
+    e_value, _ = final_result
+
+    total_end: int = perf_counter_ns()
+
+    return {
+        "e_value": e_value,
+        "setup_time": setup_end - setup_start,
+        "calc_time": calc_end - calc_start,
+        "total_time": total_end - total_start,
+    }
+
+
+def main() -> None:
+    args: Namespace = parse_args()
+
+    threads_count: int = args.threads
+    precision: int = args.precision
+    interval: int = args.interval
+    quiet: bool = args.quiet
+    output_file: str = args.file
+
+    result: dict = calculate_e(threads_count, precision, interval, quiet=quiet)
+
+    with open(output_file, "w") as f:
+        f.write(str(result["e_value"]))
+
+    if not quiet:
+        print(f"Setup time:        {result['setup_time']}")
+        print(f"Calculation time:  {result['calc_time']}")
+        print(f"Total time:        {result['total_time']}")
         print(f"Result written to: {output_file}")
 
 
-if __name__ == "__main__":
+def entry_point() -> None:
     main()
+
+
+if __name__ == "__main__":
+    entry_point()
