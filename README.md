@@ -67,14 +67,6 @@ Queue[0] → Worker[0] → Queue[1] → Worker[1] → ... → Queue[N] → Worke
 
 Before the free-threaded (no-GIL) build of Python 3.13+, the Global Interpreter Lock would serialise CPU-bound Python threads, making this approach pointless. With the GIL disabled (`PYTHON_GIL=0`), `threading.Thread` workers can run true parallel computation on multiple cores, making this pipeline effective.
 
----
-
-## Български коментари
-
-Във всички `.py` файлове са добавени докстрингове и коментари на български, описващи ролята на всяка функция, клас и основна стъпка в алгоритъма.
-
----
-
 ## Usage
 
 ### Prerequisites
