@@ -49,7 +49,7 @@ def main():
         return times
 
     # Пускане с 1 нишка за получаване на базова линия за ускорението
-    print("Running baseline (1 thread)...")
+    print("Running baseline...")
     base_times: list[int] = bench_runs(1)
     best_base_time: int = min(base_times)
 
@@ -144,7 +144,7 @@ def main():
             alpha=0.6,
         )
 
-    plt.title(f"Изчислително време при точност {args.precision}")
+    plt.title(f"Изчислително време при n = {args.precision}")
     plt.xlabel("Брой нишки")
     plt.ylabel("Време (s)")
     plt.xticks(threads_list)
@@ -167,7 +167,7 @@ def main():
         label="Sp",
     )
 
-    plt.title(f"Ускорение при точност {args.precision}")
+    plt.title(f"Ускорение при n = {args.precision}")
     plt.xlabel("Брой нишки")
     plt.ylabel("Ускорение")
     plt.xticks(threads_list)
@@ -190,7 +190,7 @@ def main():
         label="Ep",
     )
 
-    plt.title(f"Ефективност при точност {args.precision}")
+    plt.title(f"Ефективност при n = {args.precision}")
     plt.xlabel("Брой нишки")
     plt.ylabel("Ефективност")
     plt.xticks(threads_list)

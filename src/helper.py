@@ -29,13 +29,11 @@ def validate_threads(threads: int, terms: int) -> int:
     return threads
 
 
-def distribute_work(
-    terms: int, threads: int, interval: int = 1
-) -> List[Tuple[int, int]]:
+def distribute_work(terms: int, threads: int, interval: int = 1) -> List[Tuple[int, int]]:
     """
-    Разпределя [0, 1, ..., terms-1] в (threads * interval) части
-    с приблизително еднаква изчислителна цена (по-големите получават
-    по-малко членове, защото са по-скъпи).
+    Разпределя [0, 1, ..., terms-1] в (threads * interval) части,
+    така че по-големите индекси (по-скъпи заради растящите факториели)
+    да имат по-малка тежест.
     """
     if interval < 1:
         raise ValueError("Interval must be at least 1.")
@@ -44,11 +42,26 @@ def distribute_work(
     if total_chunks > terms:
         total_chunks = terms
 
+    weights: List[int] = [total_chunks - i for i in range(total_chunks)]
+    total_weight: int = sum(weights)
+
     intervals: List[Tuple[int, int]] = []
+    current: int = 0
     for i in range(total_chunks):
-        start: int = int(terms * i / total_chunks)
-        end: int = int(terms * (i + 1) / total_chunks)
-        if end > start:
-            intervals.append((start, end))
+        size: int = max(1, int((weights[i] / total_weight) * terms))
+        if current + size > terms:
+            size = terms - current
+        if size > 0:
+            intervals.append((current, current + size))
+            current += size
+        if current >= terms:
+            break
+
+    if current < terms:
+        if intervals:
+            last_start, _ = intervals[-1]
+            intervals[-1] = (last_start, terms)
+        else:
+            intervals.append((0, terms))
 
     return intervals
