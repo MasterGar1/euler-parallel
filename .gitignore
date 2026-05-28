@@ -20,9 +20,4 @@ venv/
 # Benchmark and output artifacts
 results/
 out.txt
-documentation/*.tex
-documentation/*.toc
-documentation/*.out
-documentation/*.aux
-documentation/*.fls
-documentation/*.synctex*
+documentation/*

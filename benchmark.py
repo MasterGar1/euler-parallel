@@ -50,7 +50,7 @@ def main():
 
     # Пускане с 1 нишка за получаване на базова линия за ускорението
     print("Running baseline...")
-    base_times: list[int] = bench_runs(1)
+    base_times: list[int] = list(map(lambda x: int(x), bench_runs(1)))
     best_base_time: int = min(base_times)
 
     results.append(
@@ -67,7 +67,7 @@ def main():
     current_threads = 2
     while current_threads <= max_threads:
         print(f"Running with {current_threads} threads...")
-        calc_times: list[int] = bench_runs(current_threads)
+        calc_times: list[int] = list(map(lambda x: int(x), bench_runs(current_threads)))
         best_time: int = min(calc_times)
         speedup: float = best_base_time / best_time
         efficiency: float = speedup / current_threads
@@ -103,10 +103,10 @@ def main():
             writer.writerow(
                 {
                     "p": r["threads"],
-                    "Tp(1)": r["times"][0],
-                    "Tp(2)": r["times"][1],
-                    "Tp(3)": r["times"][2],
-                    "Tp": r["best_time"],
+                    "Tp(1)": int(r["times"][0]),
+                    "Tp(2)": int(r["times"][1]),
+                    "Tp(3)": int(r["times"][2]),
+                    "Tp": int(r["best_time"]),
                     "Sp": r["speedup"],
                     "Ep": r["efficiency"],
                 }
@@ -121,7 +121,7 @@ def main():
     # --- Графика на изчислителното време (Compute Time) ---
     plt.figure(figsize=(12, 7))
 
-    best_times: list[float] = [r["best_time"] / 1e9 for r in results]
+    best_times: list[float] = [r["best_time"] for r in results]
     plt.plot(
         threads_list,
         best_times,
@@ -133,7 +133,7 @@ def main():
     )
 
     for run_idx in range(3):
-        run_times: list[float] = [r["times"][run_idx] / 1e9 for r in results]
+        run_times: list[float] = [r["times"][run_idx] for r in results]
         plt.plot(
             threads_list,
             run_times,
@@ -146,7 +146,7 @@ def main():
 
     plt.title(f"Изчислително време при n = {args.precision}")
     plt.xlabel("Брой нишки")
-    plt.ylabel("Време (s)")
+    plt.ylabel("Време (ns)")
     plt.xticks(threads_list)
     plt.grid(True, linestyle=":", alpha=0.6)
     plt.legend()
