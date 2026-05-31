@@ -184,5 +184,5 @@ def process_directory(directory_path, output_dir="output_results"):
     print(f"\nExecution finished! Check the '{output_dir}' directory for outputs.")
 
 if __name__ == "__main__":
-    target_directory = "C:/Users/GIGABYTE/Desktop/UNI/Semester-6/SPO/Project/results"
+    target_directory = "C:/Users/GIGABYTE/Desktop/UNI/Semester-6/SPO/Project/laptop_results"
     process_directory(target_directory)
