@@ -14,6 +14,7 @@ e = 1/0! + 1/1! + 1/2! + 1/3! + ... + 1/n! + ...
 
 Each term requires computing `k!` — an increasingly expensive arbitrary-precision integer operation. The number of terms needed for a given decimal precision `p` is estimated via Stirling's approximation:
 
+
 ```python
 n ≈ round(p / log(p, 10))
 ```
