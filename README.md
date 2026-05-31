@@ -1,4 +1,4 @@
-# Parallel Calculation of Euler's Number (e) — Free-Threaded Python 3.14
+# Parallel Calculation of Euler's Number (e)
 
 Computes Euler's number `e` to an arbitrary number of decimal places using the Taylor series, parallelized across multiple threads in Python 3.14's free-threaded (no-GIL) mode.
 
