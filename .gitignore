@@ -21,3 +21,4 @@ venv/
 results/
 out.txt
 documentation/*
+*results/*
