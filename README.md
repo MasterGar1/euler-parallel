@@ -113,34 +113,7 @@ python main.py -p 50000 -t 16 -i 500
 python main.py -p 100000 -t 32 -q e_100k.txt
 ```
 
-## Benchmarking
 
-A built-in benchmark runner measures speedup and efficiency across thread counts:
-
-```bash
-python benchmark.py -p 10000
-```
-
-Runs `main.py` at 1, 2, 4, 6, ... up to `cpu_count()` threads (3 runs each), then:
-
-- Writes a CSV table to `results/benchmark_p-{precision}_i-{interval}.csv`
-- Saves a **speedup** plot to `results/speedup_p-{precision}_i-{interval}.png`
-- Saves an **efficiency** plot to `results/efficiency_p-{precision}_i-{interval}.png`
-
-Columns in the CSV:
-
-| Column | Meaning |
-|--------|---------|
-| `p` | Number of threads |
-| `Tp(1)`, `Tp(2)`, `Tp(3)` | Measured runtime for each of 3 runs |
-| `Tp` | Best (minimum) runtime |
-| `Sp` | Speedup = T(1) / T(p) |
-| `Ep` | Efficiency = Sp / p |
-
-### Example Benchmark
-
-```bash
-python benchmark.py -p 10000
 ```
 
 ## Project Layout
